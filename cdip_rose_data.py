@@ -1,12 +1,15 @@
 import netCDF4
 import numpy as np
 import datetime
+import json
 
 
-class cdip_rose_data:
+class CDIPRoseData:
 
 
    def __init__(self, station_id, start_date, delta_days, *kwargs):
+
+      self.station_id = station_id
 
       # Set up some defaults for the bin sizes
       self.radial_bin_count = 16
@@ -36,11 +39,11 @@ class cdip_rose_data:
       self.Dp = self.nc.variables['waveDp'] # Assign variable name - Peak Wave Direction
       self.Hs = self.nc.variables['waveHs'] # Assign variable name - Significant Wave Height
 
-      start_unix = int(datetime.datetime.strptime(start_date, '%m/%d/%Y').timestamp())
-      end_unix = start_unix + (delta_days * 86400)
+      self.start_unix = int(datetime.datetime.strptime(start_date, '%m/%d/%Y').timestamp())
+      self.end_unix = self.start_unix + (delta_days * 86400)
 
-      self.start_index = self.find_index_nearest_time(start_unix)
-      self.end_index = self.find_index_nearest_time(end_unix)
+      self.start_index = self.find_index_nearest_time(self.start_unix)
+      self.end_index = self.find_index_nearest_time(self.end_unix)
 
 
       self._set_radial_bins()
@@ -89,6 +92,27 @@ class cdip_rose_data:
       return int(height/self.height_bin_width) - 1
 
 
+   def get_data_source_start():
+      return 0
+
+
+   def format_rose_data(self, data):
+
+      output = []; 
+
+      for i, row in enumerate(data):
+         bin = {}
+         bin['angle'] = self.radial_start_angles[i] + self.radial_bin_width/2
+         bin['start_angle'] = self.radial_start_angles[i] 
+         bin['end_angle'] = self.radial_start_angles[i] + self.radial_bin_width
+
+         for j, entry in enumerate(row):
+            bin[j] = entry
+
+         output.append(bin)
+
+      return output
+
    def get_wave_height_rose_data(self):
 
       wave_directions = np.copy(self.Dp[self.start_index:self.end_index])
@@ -102,7 +126,16 @@ class cdip_rose_data:
 
          rose_counts[radial_bin, height_bin] += 1
           
-      return rose_counts/np.sum(rose_counts)
+      rose_data =  rose_counts/np.sum(rose_counts)
+
+      output = {}
+      output['station_id'] = self.station_id
+      output['start_time'] = self.start_unix
+      output['end_time'] = self.end_unix
+      output['wave_height'] = self.format_rose_data(rose_data)
+
+      return json.dumps(output)
+
 
 
    def get_wave_period_rose_data(self):
@@ -127,9 +160,9 @@ if __name__ == "__main__":
 
    station_id = '198p1'
    start_date = '11/01/2013'
-   delta_days = 30
+   delta_days = 3
 
-   rose_data = cdip_rose_data(station_id, start_date, delta_days)
+   rose_data = CDIPRoseData(station_id, start_date, delta_days)
    result = rose_data.get_wave_height_rose_data()
 
    print(result)
