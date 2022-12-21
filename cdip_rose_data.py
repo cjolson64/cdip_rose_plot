@@ -17,7 +17,7 @@ class CDIPRoseData:
       self.period_bin_count = 10
 
       self.height_max = 5 # meters
-      self.period_max = 20 # seconds
+      self.period_max = 24 # seconds
 
       self.metric = True # change to False to convert to feet
 
@@ -92,6 +92,11 @@ class CDIPRoseData:
       return int(height/self.height_bin_width) - 1
 
 
+   def find_period_bin_number(self, period):
+
+      return int(period/self.period_bin_width) -1
+
+
    def get_data_source_start():
       return 0
 
@@ -128,31 +133,37 @@ class CDIPRoseData:
           
       rose_data =  rose_counts/np.sum(rose_counts)
 
-      output = {}
-      output['station_id'] = self.station_id
-      output['start_time'] = self.start_unix
-      output['end_time'] = self.end_unix
-      output['wave_height'] = self.format_rose_data(rose_data)
-
-      return json.dumps(output)
-
+      return self.format_rose_data(rose_data)
 
 
    def get_wave_period_rose_data(self):
 
       wave_directions = np.copy(self.Dp[self.start_index:self.end_index])
-      wave_heights = np.copy(self.Hs[self.start_index:self.end_index])
-      data = np.array([wave_directions, wave_heights]) 
-      rose_counts = np.zeros([self.radial_bin_count, self.height_bin_count], 'int')
+      wave_periods = np.copy(self.Tp[self.start_index:self.end_index])
+      data = np.array([wave_directions, wave_periods]) 
+      rose_counts = np.zeros([self.radial_bin_count, self.period_bin_count], 'int')
 
       for row in data.T:
          radial_bin = self.find_radial_bin_number(row[0])
-         height_bin = self.find_height_bin_number(row[1])
+         period_bin = self.find_period_bin_number(row[1])
 
-         rose_counts[radial_bin, height_bin] += 1
+         rose_counts[radial_bin, period_bin] += 1
           
-      return rose_counts/np.sum(rose_counts)
+      rose_data = rose_counts/np.sum(rose_counts)
 
+      return self.format_rose_data(rose_data)
+
+
+   def get_height_and_period_rose_data(self):
+
+      output = {}
+      output['station_id'] = self.station_id
+      output['start_time'] = self.start_unix
+      output['end_time'] = self.end_unix
+      output['wave_height'] = self.get_wave_height_rose_data()
+      output['wave_period'] = self.get_wave_period_rose_data()
+
+      return json.dumps(output)
 
 
 
@@ -163,7 +174,7 @@ if __name__ == "__main__":
    delta_days = 3
 
    rose_data = CDIPRoseData(station_id, start_date, delta_days)
-   result = rose_data.get_wave_height_rose_data()
+   result = rose_data.get_height_and_period_rose_data()
 
    print(result)
 
