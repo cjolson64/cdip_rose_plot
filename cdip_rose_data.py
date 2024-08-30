@@ -30,7 +30,11 @@ class CDIPRoseData:
       # Validate infput formats
       # start_date should be mm/dd/yyyy and delta_days should be int
 
-      url = 'http://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/archive/' + station_id + '/' + station_id + '_historic.nc'
+      if (historic):
+         url = f"http://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/archive/{station_id}/{station_id}_historic.nc"
+      else:
+         url = f"https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/{station_id}_rt.nc"
+
       self.nc = netCDF4.Dataset(url)
 
       self.ncTime = self.nc.variables['waveTime'][:]
@@ -174,7 +178,8 @@ if __name__ == "__main__":
    delta_days = 3
 
    rose_data = CDIPRoseData(station_id, start_date, delta_days)
-   result = rose_data.get_height_and_period_rose_data()
+   #result = rose_data.get_height_and_period_rose_data()
+   result = rose_data.format()
 
    print(result)
 
